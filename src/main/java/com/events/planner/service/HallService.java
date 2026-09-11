@@ -5,6 +5,8 @@
 package com.events.planner.service;
 
 import com.events.planner.dto.HallDto;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
 
 /**
@@ -28,4 +30,6 @@ public interface HallService {
     HallDto update(Long id, HallDto dto) throws Exception;
 
     void delete(Long id) throws Exception;
+    
+    List<HallDto> getAvailableHalls(LocalDateTime start,LocalDateTime end, Long eventId) throws Exception;
 }
