@@ -78,14 +78,24 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new Exception("User not found."));
 
-        if (dto.getEmail() != null && !dto.getEmail().equals(user.getEmail())) {
-            Optional<User> existing = userRepository.findByEmail(dto.getEmail());
-            if (existing.isPresent()) {
-                throw new Exception("Email already exists.");
-            }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            user.setEmail(dto.getEmail().trim().toLowerCase());
         }
 
-        userMapper.updateEntity(user, dto);
+        if (dto.getName() != null) {
+            user.setName(dto.getName());
+        }
+
+        if (dto.getSurname() != null) {
+            user.setSurname(dto.getSurname());
+        }
+
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
+        user.setAdmin(dto.isAdmin());
+
         User saved = userRepository.save(user);
         return userMapper.toDto(saved);
     }
