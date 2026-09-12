@@ -42,7 +42,7 @@ public class SubjectServiceImpl implements SubjectService{
 
         Optional<Subject> existing = subjectRepository.findByCode(dto.getCode());
         if (existing.isPresent()) {
-            throw new IllegalArgumentException("Subject code already exists.");
+            throw new IllegalStateException("Subject code already exists.");
         }
 
         Subject saved = subjectRepository.save(subjectMapper.toEntity(dto));
