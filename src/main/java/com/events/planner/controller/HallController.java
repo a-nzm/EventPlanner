@@ -14,11 +14,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
 /**
  *
  * @author MAU
@@ -37,10 +41,10 @@ public class HallController {
 
     @Operation(summary = "Create hall", description = "Creates a new hall.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Created",
-                    content = @Content(schema = @Schema(implementation = HallDto.class))),
-            @ApiResponse(responseCode = "400", description = "Validation error",
-                    content = @Content(schema = @Schema(implementation = String.class)))
+        @ApiResponse(responseCode = "201", description = "Created",
+                content = @Content(schema = @Schema(implementation = HallDto.class))),
+        @ApiResponse(responseCode = "400", description = "Validation error",
+                content = @Content(schema = @Schema(implementation = String.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
@@ -50,10 +54,10 @@ public class HallController {
 
     @Operation(summary = "Get hall by id")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK",
-                    content = @Content(schema = @Schema(implementation = HallDto.class))),
-            @ApiResponse(responseCode = "400", description = "Hall not found",
-                    content = @Content(schema = @Schema(implementation = String.class)))
+        @ApiResponse(responseCode = "200", description = "OK",
+                content = @Content(schema = @Schema(implementation = HallDto.class))),
+        @ApiResponse(responseCode = "400", description = "Hall not found",
+                content = @Content(schema = @Schema(implementation = String.class)))
     })
     @GetMapping("/{id}")
     public ResponseEntity<HallDto> getById(
@@ -64,7 +68,7 @@ public class HallController {
 
     @Operation(summary = "Get all halls (paged)")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK")
+        @ApiResponse(responseCode = "200", description = "OK")
     })
     @GetMapping
     public ResponseEntity<Page<HallDto>> getAll(
@@ -77,7 +81,7 @@ public class HallController {
 
     @Operation(summary = "Search halls by name")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK")
+        @ApiResponse(responseCode = "200", description = "OK")
     })
     @GetMapping("/search")
     public ResponseEntity<Page<HallDto>> searchByName(
@@ -92,7 +96,7 @@ public class HallController {
 
     @Operation(summary = "Get halls by type")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK")
+        @ApiResponse(responseCode = "200", description = "OK")
     })
     @GetMapping("/type")
     public ResponseEntity<Page<HallDto>> getByType(
@@ -107,7 +111,7 @@ public class HallController {
 
     @Operation(summary = "Get halls by minimum capacity")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK")
+        @ApiResponse(responseCode = "200", description = "OK")
     })
     @GetMapping("/capacity")
     public ResponseEntity<Page<HallDto>> getByMinCapacity(
@@ -122,10 +126,10 @@ public class HallController {
 
     @Operation(summary = "Update hall", description = "Updates an existing hall by id.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK",
-                    content = @Content(schema = @Schema(implementation = HallDto.class))),
-            @ApiResponse(responseCode = "400", description = "Hall not found / validation error",
-                    content = @Content(schema = @Schema(implementation = String.class)))
+        @ApiResponse(responseCode = "200", description = "OK",
+                content = @Content(schema = @Schema(implementation = HallDto.class))),
+        @ApiResponse(responseCode = "400", description = "Hall not found / validation error",
+                content = @Content(schema = @Schema(implementation = String.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
@@ -138,9 +142,9 @@ public class HallController {
 
     @Operation(summary = "Delete hall")
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Deleted"),
-            @ApiResponse(responseCode = "400", description = "Hall not found",
-                    content = @Content(schema = @Schema(implementation = String.class)))
+        @ApiResponse(responseCode = "204", description = "Deleted"),
+        @ApiResponse(responseCode = "400", description = "Hall not found",
+                content = @Content(schema = @Schema(implementation = String.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
@@ -149,6 +153,36 @@ public class HallController {
             @PathVariable Long id) throws Exception {
         hallService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Get available halls for an event and time period")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Available halls returned"
+        ),
+        @ApiResponse(
+                responseCode = "400",
+                description = "Invalid time period or event not found",
+                content = @Content(
+                        schema = @Schema(implementation = String.class)
+                )
+        )
+    })
+    @GetMapping("/available")
+    public List<HallDto> getAvailableHalls(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam Long eventId
+    ) throws Exception {
+
+        return hallService.getAvailableHalls(
+                start,
+                end,
+                eventId
+        );
     }
 
     @ExceptionHandler(Exception.class)
