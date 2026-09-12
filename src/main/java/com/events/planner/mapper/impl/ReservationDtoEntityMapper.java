@@ -5,6 +5,7 @@ import com.events.planner.entity.Reservation;
 import com.events.planner.entity.ReservationStatus;
 import com.events.planner.mapper.DtoEntityMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -45,6 +46,6 @@ public class ReservationDtoEntityMapper implements DtoEntityMapper<ReservationDt
         entity.setEnd(dto.getEnd());
         entity.setStatus(dto.getStatus()!= null ? ReservationStatus.valueOf(dto.getStatus().trim().toUpperCase()) : null);
         entity.setDescription(dto.getDescription());
-        entity.setTimestamp(LocalDateTime.now());
+        entity.setTimestamp(LocalDateTime.now(ZoneId.of("Europe/Belgrade")));
     }
 }

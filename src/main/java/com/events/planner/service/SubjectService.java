@@ -13,17 +13,17 @@ import org.springframework.data.domain.Page;
  */
 public interface SubjectService {
 
-    SubjectDto create(SubjectDto dto) throws Exception;
+    SubjectDto create(SubjectDto dto);
 
-    SubjectDto getById(Long id) throws Exception;
+    SubjectDto getById(Long id);
 
     Page<SubjectDto> getAll(int page, int size);
 
-    SubjectDto getByCode(String code) throws Exception;
+    SubjectDto getByCode(String code);
 
     Page<SubjectDto> searchByName(String name, int page, int size);
 
-    SubjectDto update(Long id, SubjectDto dto) throws Exception;
+    SubjectDto update(Long id, SubjectDto dto);
 
-    void delete(Long id) throws Exception;
+    void delete(Long id);
 }

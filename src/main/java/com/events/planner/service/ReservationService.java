@@ -14,9 +14,9 @@ import org.springframework.security.core.Authentication;
  */
 public interface ReservationService {
 
-    ReservationDto create(ReservationDto dto, String email) throws Exception;
+    ReservationDto create(ReservationDto dto, String email);
 
-    ReservationDto getById(Long id) throws Exception;
+    ReservationDto getById(Long id);
 
     Page<ReservationDto> getAll(int page, int size);
 
@@ -26,13 +26,13 @@ public interface ReservationService {
 
     Page<ReservationDto> getByEventId(Long eventId, int page, int size);
 
-    ReservationDto update(Long id, ReservationDto dto, Authentication authentication) throws Exception;
+    ReservationDto update(Long id, ReservationDto dto, Authentication authentication);
 
-    ReservationDto updateStatus(Long id, String status, Authentication authentication) throws Exception;
+    ReservationDto updateStatus(Long id, String status, Authentication authentication);
 
-    Page<ReservationDto> getByStatus(String status, int page, int size) throws Exception;
+    Page<ReservationDto> getByStatus(String status, int page, int size);
     
     Page<ReservationDto> getFiltered(int page, int size, String status, Long userId, Long hallId, Long eventId, String sortBy, String sortDir);
 
-    void delete(Long id) throws Exception;
+    void delete(Long id);
 }

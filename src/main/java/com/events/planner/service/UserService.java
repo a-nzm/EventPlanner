@@ -5,21 +5,21 @@ import org.springframework.data.domain.Page;
 
 public interface UserService {
 
-    UserDto create(UserDto dto) throws Exception;
+    UserDto create(UserDto dto);
 
-    UserDto getById(Long id) throws Exception;
+    UserDto getById(Long id) ;
 
     Page<UserDto> getAll(int page, int size);
 
-    UserDto getByEmail(String email) throws Exception;
+    UserDto getByEmail(String email);
 
     Page<UserDto> getByAdmin(boolean admin, int page, int size);
 
-    UserDto update(Long id, UserDto dto) throws Exception;
+    UserDto update(Long id, UserDto dto);
 
-    void delete(Long id) throws Exception;
+    void delete(Long id) ;
 
-    UserDto login(String email, String password) throws Exception;
+    UserDto login(String email, String password);
 
-    UserDto updateByEmail(String email, UserDto dto) throws Exception;
+    UserDto updateByEmail(String email, UserDto dto);
 }

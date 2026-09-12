@@ -12,6 +12,7 @@ import com.events.planner.mapper.impl.EventDtoEntityMapper;
 import com.events.planner.repository.EventRepository;
 import com.events.planner.repository.SubjectRepository;
 import com.events.planner.service.EventService;
+import java.util.NoSuchElementException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final SubjectRepository subjectRepository;
     private final EventDtoEntityMapper eventMapper;
+    private static final String EVENT_NOT_FOUND = "Event not found.";
 
     public EventServiceImpl(EventRepository eventRepository, SubjectRepository subjectRepository, EventDtoEntityMapper eventMapper) {
         this.eventRepository = eventRepository;
@@ -35,15 +37,15 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventDto create(EventDto dto) throws Exception {
+    public EventDto create(EventDto dto){
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new Exception("Event name is required.");
+            throw new IllegalArgumentException("Event name is required.");
         }
         if (dto.getType() == null || dto.getType().isBlank()) {
-            throw new Exception("Event type is required.");
+            throw new IllegalArgumentException("Event type is required.");
         }
         if (dto.getCapacity() < 0) {
-            throw new Exception("Capacity cannot be negative.");
+            throw new IllegalArgumentException("Capacity cannot be negative.");
         }
 
         parseEventType(dto.getType());
@@ -52,7 +54,7 @@ public class EventServiceImpl implements EventService {
 
         if (dto.getSubjectId() != null) {
             Subject subject = subjectRepository.findById(dto.getSubjectId())
-                    .orElseThrow(() -> new Exception("Subject not found."));
+                    .orElseThrow(() -> new NoSuchElementException("Subject not found."));
             event.setSubject(subject);
         }
 
@@ -61,50 +63,50 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventDto getById(Long id) throws Exception {
+    public EventDto getById(Long id){
         return eventRepository.findById(id)
                 .map(eventMapper::toDto)
-                .orElseThrow(() -> new Exception("Event not found."));
+                .orElseThrow(() -> new NoSuchElementException(EVENT_NOT_FOUND));
     }
 
     @Override
     public Page<EventDto> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return eventRepository.findAll(pageable).map(eventMapper::toDto);
     }
 
     @Override
-    public Page<EventDto> getByType(String type, int page, int size) throws Exception {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+    public Page<EventDto> getByType(String type, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         EventType eventType = parseEventType(type);
         return eventRepository.findByType(eventType, pageable).map(eventMapper::toDto);
     }
 
     @Override
     public Page<EventDto> searchByName(String name, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return eventRepository.findByNameContainingIgnoreCase(name, pageable).map(eventMapper::toDto);
     }
 
     @Override
     public Page<EventDto> getBySubjectId(Long subjectId, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return eventRepository.findBySubjectId(subjectId, pageable).map(eventMapper::toDto);
     }
 
     @Override
-    public EventDto update(Long id, EventDto dto) throws Exception {
+    public EventDto update(Long id, EventDto dto){
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new Exception("Event not found."));
+                .orElseThrow(() -> new NoSuchElementException(EVENT_NOT_FOUND));
 
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new Exception("Event name is required.");
+            throw new IllegalArgumentException("Event name is required.");
         }
         if (dto.getType() == null || dto.getType().isBlank()) {
-            throw new Exception("Event type is required.");
+            throw new IllegalArgumentException("Event type is required.");
         }
         if (dto.getCapacity() < 0) {
-            throw new Exception("Capacity cannot be negative.");
+            throw new IllegalArgumentException("Capacity cannot be negative.");
         }
 
         parseEventType(dto.getType());
@@ -113,7 +115,7 @@ public class EventServiceImpl implements EventService {
 
         if (dto.getSubjectId() != null) {
             Subject subject = subjectRepository.findById(dto.getSubjectId())
-                    .orElseThrow(() -> new Exception("Subject not found."));
+                    .orElseThrow(() -> new NoSuchElementException("Subject not found."));
             event.setSubject(subject);
         } else {
             event.setSubject(null);
@@ -124,19 +126,23 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public void delete(Long id) throws Exception {
+    public void delete(Long id) {
         if (!eventRepository.existsById(id)) {
-            throw new Exception("Event not found.");
+            throw new NoSuchElementException(EVENT_NOT_FOUND);
         }
         eventRepository.deleteById(id);
     }
 
-    private EventType parseEventType(String type) throws Exception {
-        try {
-            return EventType.valueOf(type.trim().toUpperCase());
-        } catch (Exception e) {
-            throw new Exception("Invalid event type.");
-        }
+    private EventType parseEventType(String type) {
+    if (type == null || type.isBlank()) {
+        throw new IllegalArgumentException("Event type is required.");
     }
+
+    try {
+        return EventType.valueOf(type.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid event type.", e);
+    }
+}
 
 }
