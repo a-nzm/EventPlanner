@@ -11,9 +11,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.util.NoSuchElementException;
 
 @Service
 public class UserServiceImpl implements UserService {
+    
+    private static final String USER_NOT_FOUND = "User not found.";
 
     private final UserRepository userRepository;
     private final UserDtoEntityMapper userMapper;
@@ -27,17 +30,17 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto create(UserDto dto) throws Exception {
+    public UserDto create(UserDto dto) {
         if (dto.getEmail() == null || dto.getEmail().isBlank()) {
-            throw new Exception("Email is required.");
+            throw new IllegalArgumentException("Email is required.");
         }
         if (dto.getPassword() == null || dto.getPassword().isBlank()) {
-            throw new Exception("Password is required.");
+            throw new IllegalArgumentException("Password is required.");
         }
 
         Optional<User> existing = userRepository.findByEmail(dto.getEmail());
         if (existing.isPresent()) {
-            throw new Exception("Email already exists.");
+            throw new IllegalStateException("Email already exists.");
         }
 
         User user = userMapper.toEntity(dto);
@@ -48,35 +51,35 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto getById(Long id) throws Exception {
+    public UserDto getById(Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDto)
-                .orElseThrow(() -> new Exception("User not found."));
+                .orElseThrow(() -> new NoSuchElementException(USER_NOT_FOUND));
     }
 
     @Override
     public Page<UserDto> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return userRepository.findAll(pageable).map(userMapper::toDto);
     }
 
     @Override
-    public UserDto getByEmail(String email) throws Exception {
+    public UserDto getByEmail(String email){
         return userRepository.findByEmail(email)
                 .map(userMapper::toDto)
-                .orElseThrow(() -> new Exception("User not found."));
+                .orElseThrow(() -> new NoSuchElementException(USER_NOT_FOUND));
     }
 
     @Override
     public Page<UserDto> getByAdmin(boolean admin, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return userRepository.findByAdmin(admin, pageable).map(userMapper::toDto);
     }
 
     @Override
-    public UserDto update(Long id, UserDto dto) throws Exception {
+    public UserDto update(Long id, UserDto dto) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new Exception("User not found."));
+                .orElseThrow(() -> new NoSuchElementException(USER_NOT_FOUND));
 
         if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
             user.setEmail(dto.getEmail().trim().toLowerCase());
@@ -101,36 +104,36 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void delete(Long id) throws Exception {
+    public void delete(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new Exception("User not found.");
+            throw new NoSuchElementException(USER_NOT_FOUND);
         }
         userRepository.deleteById(id);
     }
 
     @Override
-    public UserDto login(String email, String password) throws Exception {
+    public UserDto login(String email, String password) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new Exception("Invalid email or password."));
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new Exception("Invalid email or password.");
+            throw new IllegalArgumentException("Invalid email or password.");
         }
 
         return userMapper.toDto(user);
     }
 
     @Override
-    public UserDto updateByEmail(String email, UserDto dto) throws Exception {
+    public UserDto updateByEmail(String email, UserDto dto) {
         User user = userRepository.findByEmail(email.trim().toLowerCase())
-                .orElseThrow(() -> new Exception("User not found."));
+                .orElseThrow(() -> new NoSuchElementException(USER_NOT_FOUND));
 
         if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
             String newEmail = dto.getEmail().trim().toLowerCase();
 
             if (!newEmail.equals(user.getEmail())) {
                 if (userRepository.findByEmail(newEmail).isPresent()) {
-                    throw new Exception("Email already exists.");
+                    throw new IllegalStateException("Email already exists.");
                 }
                 user.setEmail(newEmail);
             }

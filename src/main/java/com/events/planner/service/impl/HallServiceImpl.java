@@ -20,7 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import java.util.NoSuchElementException;
 /**
  *
  * @author MAU
@@ -32,6 +32,7 @@ public class HallServiceImpl implements HallService {
     private final EventRepository eventRepository;
 
     private final HallDtoEntityMapper hallMapper;
+    private static final String HALL_NOT_FOUND = "Hall not found.";
 
     public HallServiceImpl(HallRepository hallRepository, HallDtoEntityMapper hallMapper, EventRepository eventRepository) {
         this.hallRepository = hallRepository;
@@ -40,15 +41,15 @@ public class HallServiceImpl implements HallService {
     }
 
     @Override
-    public HallDto create(HallDto dto) throws Exception {
+    public HallDto create(HallDto dto) {
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new Exception("Hall name is required.");
+            throw new IllegalArgumentException("Hall name is required.");
         }
         if (dto.getType() == null || dto.getType().isBlank()) {
-            throw new Exception("Hall type is required.");
+            throw new IllegalArgumentException("Hall type is required.");
         }
         if (dto.getCapacity() < 0) {
-            throw new Exception("Capacity cannot be negative.");
+            throw new IllegalArgumentException("Capacity cannot be negative.");
         }
 
         parseHallType(dto.getType());
@@ -58,50 +59,50 @@ public class HallServiceImpl implements HallService {
     }
 
     @Override
-    public HallDto getById(Long id) throws Exception {
+    public HallDto getById(Long id) {
         return hallRepository.findById(id)
                 .map(hallMapper::toDto)
-                .orElseThrow(() -> new Exception("Hall not found."));
+                .orElseThrow(() -> new NoSuchElementException(HALL_NOT_FOUND));
     }
 
     @Override
     public Page<HallDto> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return hallRepository.findAll(pageable).map(hallMapper::toDto);
     }
 
     @Override
     public Page<HallDto> searchByName(String name, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return hallRepository.findByNameContainingIgnoreCase(name, pageable).map(hallMapper::toDto);
     }
 
     @Override
-    public Page<HallDto> getByType(String type, int page, int size) throws Exception {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+    public Page<HallDto> getByType(String type, int page, int size){
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         HallType hallType = parseHallType(type);
         return hallRepository.findByType(hallType, pageable).map(hallMapper::toDto);
     }
 
     @Override
     public Page<HallDto> getByMinCapacity(int capacity, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return hallRepository.findByCapacityGreaterThanEqual(capacity, pageable).map(hallMapper::toDto);
     }
 
     @Override
-    public HallDto update(Long id, HallDto dto) throws Exception {
+    public HallDto update(Long id, HallDto dto) {
         Hall hall = hallRepository.findById(id)
-                .orElseThrow(() -> new Exception("Hall not found."));
+                .orElseThrow(() -> new NoSuchElementException(HALL_NOT_FOUND));
 
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new Exception("Hall name is required.");
+            throw new IllegalArgumentException("Hall name is required.");
         }
         if (dto.getType() == null || dto.getType().isBlank()) {
-            throw new Exception("Hall type is required.");
+            throw new IllegalArgumentException("Hall type is required.");
         }
         if (dto.getCapacity() < 0) {
-            throw new Exception("Capacity cannot be negative.");
+            throw new IllegalArgumentException("Capacity cannot be negative.");
         }
 
         parseHallType(dto.getType());
@@ -112,53 +113,57 @@ public class HallServiceImpl implements HallService {
     }
 
     @Override
-    public void delete(Long id) throws Exception {
+    public void delete(Long id) {
         if (!hallRepository.existsById(id)) {
-            throw new Exception("Hall not found.");
+            throw new NoSuchElementException(HALL_NOT_FOUND);
         }
         hallRepository.deleteById(id);
     }
 
-    private HallType parseHallType(String type) throws Exception {
-        try {
-            return HallType.valueOf(type.trim().toUpperCase());
-        } catch (Exception e) {
-            throw new Exception("Invalid hall type.");
-        }
+   private HallType parseHallType(String type) {
+    if (type == null || type.isBlank()) {
+        throw new IllegalArgumentException("Hall type is required.");
     }
 
+    try {
+        return HallType.valueOf(type.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid hall type.", e);
+    }
+}
+
     @Override
-    public List<HallDto> getAvailableHalls(LocalDateTime start, LocalDateTime end, Long eventId) throws Exception {
+    public List<HallDto> getAvailableHalls(LocalDateTime start, LocalDateTime end, Long eventId) {
 
         if (start == null) {
-            throw new Exception("Start time is required.");
+            throw new IllegalArgumentException("Start time is required.");
         }
 
         if (end == null) {
-            throw new Exception("End time is required.");
+            throw new IllegalArgumentException("End time is required.");
         }
 
         if (!end.isAfter(start)) {
-            throw new Exception("End time must be after start time.");
+            throw new IllegalArgumentException("End time must be after start time.");
         }
 
         LocalTime openingTime = LocalTime.of(8, 0);
         LocalTime closingTime = LocalTime.of(20, 0);
 
         if (start.toLocalTime().isBefore(openingTime)) {
-            throw new Exception("Reservations cannot start before 08:00.");
+            throw new IllegalArgumentException("Reservations cannot start before 08:00.");
         }
 
         if (end.toLocalTime().isAfter(closingTime)) {
-            throw new Exception("Reservations must end by 20:00.");
+            throw new IllegalArgumentException("Reservations must end by 20:00.");
         }
 
         if (eventId == null) {
-            throw new Exception("Event ID is required.");
+            throw new IllegalArgumentException("Event ID is required.");
         }
 
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new Exception("Event not found."));
+                .orElseThrow(() -> new NoSuchElementException("Event not found."));
 
         int requiredCapacity = event.getCapacity();
 

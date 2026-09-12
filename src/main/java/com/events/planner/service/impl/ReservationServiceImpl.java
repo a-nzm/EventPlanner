@@ -16,8 +16,11 @@ import com.events.planner.repository.HallRepository;
 import com.events.planner.repository.ReservationRepository;
 import com.events.planner.repository.UserRepository;
 import com.events.planner.service.ReservationService;
+import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.NoSuchElementException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +35,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ReservationServiceImpl implements ReservationService {
+
+    private static final String RESERVATION_NOT_FOUND = "Reservation not found.";
 
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
@@ -52,27 +57,27 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public ReservationDto create(ReservationDto dto, String email) throws Exception {
+    public ReservationDto create(ReservationDto dto, String email) {
         validateReservation(dto, false);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new Exception("User not found."));
+                .orElseThrow(() -> new NoSuchElementException("User not found."));
 
         Hall hall = hallRepository.findById(dto.getHallId())
-                .orElseThrow(() -> new Exception("Hall not found."));
+                .orElseThrow(() -> new NoSuchElementException("Hall not found."));
 
         Event event = eventRepository.findById(dto.getEventId())
-                .orElseThrow(() -> new Exception("Event not found."));
+                .orElseThrow(() -> new NoSuchElementException("Event not found."));
 
         if (event.getCapacity() > hall.getCapacity()) {
-            throw new Exception("Selected event requires more capacity than the chosen hall.");
+            throw new IllegalArgumentException("Selected event requires more capacity than the chosen hall.");
         }
 
         Reservation reservation = reservationMapper.toEntity(dto);
         reservation.setUser(user);
         reservation.setHall(hall);
         reservation.setEvent(event);
-        reservation.setTimestamp(LocalDateTime.now());
+        reservation.setTimestamp(LocalDateTime.now(ZoneId.of("Europe/Belgrade")));
 
         reservation.setStatus(ReservationStatus.PENDING);
 
@@ -81,59 +86,59 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public ReservationDto getById(Long id) throws Exception {
+    public ReservationDto getById(Long id){
         return reservationRepository.findById(id)
                 .map(reservationMapper::toDto)
-                .orElseThrow(() -> new Exception("Reservation not found."));
+                .orElseThrow(() -> new NoSuchElementException(RESERVATION_NOT_FOUND));
     }
 
     @Override
     public Page<ReservationDto> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return reservationRepository.findAll(pageable).map(reservationMapper::toDto);
     }
 
     @Override
     public Page<ReservationDto> getByUserId(Long userId, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return reservationRepository.findByUserId(userId, pageable).map(reservationMapper::toDto);
     }
 
     @Override
     public Page<ReservationDto> getByHallId(Long hallId, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return reservationRepository.findByHallId(hallId, pageable).map(reservationMapper::toDto);
     }
 
     @Override
     public Page<ReservationDto> getByEventId(Long eventId, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return reservationRepository.findByEventId(eventId, pageable).map(reservationMapper::toDto);
     }
 
     @Override
-    public Page<ReservationDto> getByStatus(String status, int page, int size) throws Exception {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+    public Page<ReservationDto> getByStatus(String status, int page, int size)  {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         ReservationStatus reservationStatus = parseReservationStatus(status);
         return reservationRepository.findByStatus(reservationStatus, pageable)
                 .map(reservationMapper::toDto);
     }
 
     @Override
-    public ReservationDto update(Long id, ReservationDto dto, Authentication authentication) throws Exception {
+    public ReservationDto update(Long id, ReservationDto dto, Authentication authentication)  {
         validateReservation(dto, true);
 
         Reservation reservation = reservationRepository.findById(id)
-                .orElseThrow(() -> new Exception("Reservation not found."));
+                .orElseThrow(() -> new NoSuchElementException(RESERVATION_NOT_FOUND));
 
         User user = userRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new Exception("User not found."));
+                .orElseThrow(() -> new NoSuchElementException("User not found."));
 
         Hall hall = hallRepository.findById(dto.getHallId())
-                .orElseThrow(() -> new Exception("Hall not found."));
+                .orElseThrow(() -> new NoSuchElementException("Hall not found."));
 
         Event event = eventRepository.findById(dto.getEventId())
-                .orElseThrow(() -> new Exception("Event not found."));
+                .orElseThrow(() -> new NoSuchElementException("Event not found."));
 
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -143,16 +148,16 @@ public class ReservationServiceImpl implements ReservationService {
         if (!isAdmin) {
 
             if (!reservation.getUser().getEmail().equals(email)) {
-                throw new Exception("You can only edit your own reservations.");
+                throw new AccessDeniedException("You can only edit your own reservations.");
             }
 
             if (reservation.getStatus() != ReservationStatus.PENDING) {
-                throw new Exception("Only PENDING reservations can be edited.");
+                throw new IllegalStateException("Only PENDING reservations can be edited.");
             }
         }
 
         if (event.getCapacity() > hall.getCapacity()) {
-            throw new Exception("Selected event requires more capacity than the chosen hall.");
+            throw new IllegalArgumentException("Selected event requires more capacity than the chosen hall.");
         }
 
         if (reservation.getStatus() == ReservationStatus.APPROVED) {
@@ -165,7 +170,7 @@ public class ReservationServiceImpl implements ReservationService {
             );
 
             if (conflict) {
-                throw new Exception("Hall is already reserved in that time period by an approved reservation.");
+                throw new IllegalStateException("Hall is already reserved in that time period by an approved reservation.");
             }
         }
 
@@ -185,9 +190,9 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public ReservationDto updateStatus(Long id, String status, Authentication authentication) throws Exception {
+    public ReservationDto updateStatus(Long id, String status, Authentication authentication){
         Reservation reservation = reservationRepository.findById(id)
-                .orElseThrow(() -> new Exception("Reservation not found."));
+                .orElseThrow(() -> new NoSuchElementException(RESERVATION_NOT_FOUND));
 
         ReservationStatus newStatus = parseReservationStatus(status);
 
@@ -198,16 +203,16 @@ public class ReservationServiceImpl implements ReservationService {
 
         if (!isAdmin) {
             if (!reservation.getUser().getEmail().equals(email)) {
-                throw new Exception("You can only change status of your own reservations.");
+                throw new AccessDeniedException("You can only change status of your own reservations.");
             }
 
             if (newStatus != ReservationStatus.CANCELLED) {
-                throw new Exception("Users can only cancel their own reservations.");
+                throw new AccessDeniedException("Users can only cancel their own reservations.");
             }
 
             if (reservation.getStatus() != ReservationStatus.PENDING
                     && reservation.getStatus() != ReservationStatus.APPROVED) {
-                throw new Exception("Only PENDING or APPROVED reservations can be cancelled.");
+                throw new IllegalStateException("Only PENDING or APPROVED reservations can be cancelled.");
             }
         }
 
@@ -221,7 +226,7 @@ public class ReservationServiceImpl implements ReservationService {
             );
 
             if (conflict) {
-                throw new Exception("Cannot approve reservation. Hall is already reserved in that time period.");
+                throw new IllegalStateException("Cannot approve reservation. Hall is already reserved in that time period.");
             }
         }
 
@@ -232,39 +237,39 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public void delete(Long id) throws Exception {
+    public void delete(Long id){
         if (!reservationRepository.existsById(id)) {
-            throw new Exception("Reservation not found.");
+            throw new NoSuchElementException(RESERVATION_NOT_FOUND);
         }
         reservationRepository.deleteById(id);
     }
 
-    private void validateReservation(ReservationDto dto, boolean requireUserId) throws Exception {
+    private void validateReservation(ReservationDto dto, boolean requireUserId){
         if (dto.getStart() == null) {
-            throw new Exception("Start time is required.");
+           throw new IllegalArgumentException("Start time is required.");
         }
         if (dto.getEnd() == null) {
-            throw new Exception("End time is required.");
+            throw new IllegalArgumentException("End time is required.");
         }
         if (!dto.getEnd().isAfter(dto.getStart())) {
-            throw new Exception("End time must be after start time.");
+            throw new IllegalArgumentException("End time must be after start time.");
         }
         LocalTime openingTime = LocalTime.of(8, 0);
         LocalTime closingTime = LocalTime.of(20, 0);
         if (dto.getStart().toLocalTime().isBefore(openingTime)) {
-            throw new Exception("Reservations cannot start before 08:00.");
+            throw new IllegalArgumentException("Reservations cannot start before 08:00.");
         }
         if (dto.getEnd().toLocalTime().isAfter(closingTime)) {
-            throw new Exception("Reservations must end by 20:00.");
+            throw new IllegalArgumentException("Reservations must end by 20:00.");
         }
         if (requireUserId && dto.getUserId() == null) {
-            throw new Exception("User ID is required.");
+            throw new IllegalArgumentException("User ID is required.");
         }
         if (dto.getHallId() == null) {
-            throw new Exception("Hall ID is required.");
+            throw new IllegalArgumentException("Hall ID is required.");
         }
         if (dto.getEventId() == null) {
-            throw new Exception("Event ID is required.");
+            throw new IllegalArgumentException("Event ID is required.");
         }
     }
 
@@ -283,6 +288,8 @@ public class ReservationServiceImpl implements ReservationService {
                 break;
             case "created":
                 sortBy = "timestamp";
+                break;
+            default:
                 break;
         }
 
@@ -318,16 +325,16 @@ public class ReservationServiceImpl implements ReservationService {
                 .map(reservationMapper::toDto);
     }
 
-    private ReservationStatus parseReservationStatus(String status) throws Exception {
-        if (status == null || status.isBlank()) {
-            throw new Exception("Reservation status is required.");
-        }
-
-        try {
-            return ReservationStatus.valueOf(status.trim().toUpperCase());
-        } catch (Exception e) {
-            throw new Exception("Invalid reservation status.");
-        }
+  private ReservationStatus parseReservationStatus(String status) {
+    if (status == null || status.isBlank()) {
+        throw new IllegalArgumentException("Reservation status is required.");
     }
+
+    try {
+        return ReservationStatus.valueOf(status.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid reservation status.", e);
+    }
+}
 
 }

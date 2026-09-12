@@ -13,19 +13,19 @@ import org.springframework.data.domain.Page;
  */
 public interface EventService {
     
-    EventDto create(EventDto dto) throws Exception;
+    EventDto create(EventDto dto);
 
-    EventDto getById(Long id) throws Exception;
+    EventDto getById(Long id);
 
     Page<EventDto> getAll(int page, int size);
 
-    Page<EventDto> getByType(String type, int page, int size) throws Exception;
+    Page<EventDto> getByType(String type, int page, int size);
 
     Page<EventDto> searchByName(String name, int page, int size);
 
     Page<EventDto> getBySubjectId(Long subjectId, int page, int size);
 
-    EventDto update(Long id, EventDto dto) throws Exception;
+    EventDto update(Long id, EventDto dto);
 
-    void delete(Long id) throws Exception;
+    void delete(Long id);
 }

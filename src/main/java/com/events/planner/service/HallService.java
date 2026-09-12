@@ -15,21 +15,21 @@ import org.springframework.data.domain.Page;
  */
 public interface HallService {
 
-    HallDto create(HallDto dto) throws Exception;
+    HallDto create(HallDto dto);
 
-    HallDto getById(Long id) throws Exception;
+    HallDto getById(Long id) ;
 
     Page<HallDto> getAll(int page, int size);
 
     Page<HallDto> searchByName(String name, int page, int size);
 
-    Page<HallDto> getByType(String type, int page, int size) throws Exception;
+    Page<HallDto> getByType(String type, int page, int size);
 
     Page<HallDto> getByMinCapacity(int capacity, int page, int size);
 
-    HallDto update(Long id, HallDto dto) throws Exception;
+    HallDto update(Long id, HallDto dto);
 
-    void delete(Long id) throws Exception;
+    void delete(Long id);
     
-    List<HallDto> getAvailableHalls(LocalDateTime start,LocalDateTime end, Long eventId) throws Exception;
+    List<HallDto> getAvailableHalls(LocalDateTime start,LocalDateTime end, Long eventId);
 }

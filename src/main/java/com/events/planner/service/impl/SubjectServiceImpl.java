@@ -9,6 +9,7 @@ import com.events.planner.entity.Subject;
 import com.events.planner.mapper.impl.SubjectDtoEntityMapper;
 import com.events.planner.repository.SubjectRepository;
 import com.events.planner.service.SubjectService;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class SubjectServiceImpl implements SubjectService{
+    private static final String SUBJECT_NOT_FOUND = "Subject not found.";
     private final SubjectRepository subjectRepository;
     private final SubjectDtoEntityMapper subjectMapper;
 
@@ -30,17 +32,17 @@ public class SubjectServiceImpl implements SubjectService{
     }
 
     @Override
-    public SubjectDto create(SubjectDto dto) throws Exception {
+    public SubjectDto create(SubjectDto dto){
         if (dto.getCode() == null || dto.getCode().isBlank()) {
-            throw new Exception("Subject code is required.");
+            throw new IllegalArgumentException("Subject code is required.");
         }
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new Exception("Subject name is required.");
+            throw new IllegalArgumentException("Subject name is required.");
         }
 
         Optional<Subject> existing = subjectRepository.findByCode(dto.getCode());
         if (existing.isPresent()) {
-            throw new Exception("Subject code already exists.");
+            throw new IllegalArgumentException("Subject code already exists.");
         }
 
         Subject saved = subjectRepository.save(subjectMapper.toEntity(dto));
@@ -48,47 +50,47 @@ public class SubjectServiceImpl implements SubjectService{
     }
 
     @Override
-    public SubjectDto getById(Long id) throws Exception {
+    public SubjectDto getById(Long id){
         return subjectRepository.findById(id)
                 .map(subjectMapper::toDto)
-                .orElseThrow(() -> new Exception("Subject not found."));
+                .orElseThrow(() -> new NoSuchElementException(SUBJECT_NOT_FOUND));
     }
 
     @Override
     public Page<SubjectDto> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return subjectRepository.findAll(pageable).map(subjectMapper::toDto);
     }
 
     @Override
-    public SubjectDto getByCode(String code) throws Exception {
+    public SubjectDto getByCode(String code) {
         return subjectRepository.findByCode(code)
                 .map(subjectMapper::toDto)
-                .orElseThrow(() -> new Exception("Subject not found."));
+                .orElseThrow(() -> new NoSuchElementException(SUBJECT_NOT_FOUND));
     }
 
     @Override
     public Page<SubjectDto> searchByName(String name, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 50));
         return subjectRepository.findByNameContainingIgnoreCase(name, pageable).map(subjectMapper::toDto);
     }
 
     @Override
-    public SubjectDto update(Long id, SubjectDto dto) throws Exception {
+    public SubjectDto update(Long id, SubjectDto dto) {
         Subject subject = subjectRepository.findById(id)
-                .orElseThrow(() -> new Exception("Subject not found."));
+                .orElseThrow(() -> new NoSuchElementException(SUBJECT_NOT_FOUND));
 
         if (dto.getCode() == null || dto.getCode().isBlank()) {
-            throw new Exception("Subject code is required.");
+            throw new IllegalArgumentException("Subject code is required.");
         }
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new Exception("Subject name is required.");
+            throw new IllegalArgumentException("Subject name is required.");
         }
 
         if (!dto.getCode().equals(subject.getCode())) {
             Optional<Subject> existing = subjectRepository.findByCode(dto.getCode());
             if (existing.isPresent()) {
-                throw new Exception("Subject code already exists.");
+                throw new IllegalStateException("Subject code already exists.");
             }
         }
 
@@ -98,9 +100,9 @@ public class SubjectServiceImpl implements SubjectService{
     }
 
     @Override
-    public void delete(Long id) throws Exception {
+    public void delete(Long id){
         if (!subjectRepository.existsById(id)) {
-            throw new Exception("Subject not found.");
+            throw new NoSuchElementException(SUBJECT_NOT_FOUND);
         }
         subjectRepository.deleteById(id);
     }
